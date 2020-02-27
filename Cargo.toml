@@ -1,0 +1,14 @@
+[package]
+name = "imagemorph"
+version = "0.1.0"
+authors = ["Alex Davidoff <ad35@pdx.edu>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+gl = "0.14.0"
+glium = "*"
+image = "0.22.2"
+imageproc = "0.19.2"
+winit = "0.19"
