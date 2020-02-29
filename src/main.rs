@@ -75,13 +75,6 @@ fn main() {
     texture::SrgbTexture2d::new(&display_src, src_img).unwrap()
   };
 
-  let dst = {
-    let dst_img = image::open(&Path::new(&dst)).unwrap().to_rgba();
-    let dst_dim = dst_img.dimensions();
-    let dst_img = texture::RawImage2d::from_raw_rgba_reversed(&dst_img.into_raw(), dst_dim);
-    texture::SrgbTexture2d::new(&display_dst, dst_img).unwrap()
-  };
-
   let (vertices, indices) = {
     let data: Vec<u16> = vec![0, 1, 2, 1, 3, 2];
     let vertex_buf = glium::VertexBuffer::empty_dynamic(&display_src, 4).unwrap();
@@ -110,7 +103,8 @@ fn main() {
 
   let size = Vector2 { x: 500.0, y: 350.0 };
   let mut position = Vector2 { x: 512.0, y: 384.0 };
-  
+  let mut is_src = 1;
+ 
   events_loop.run(move |event, _, control_flow| {
     let next_frame_time = Instant::now() + Duration::from_nanos(16_666_667);
     *control_flow = event_loop::ControlFlow::WaitUntil(next_frame_time);
@@ -119,7 +113,12 @@ fn main() {
       event::Event::WindowEvent { event, .. } => match event {
           event::WindowEvent::CloseRequested => {
             *control_flow = event_loop::ControlFlow::Exit;
-            return;
+	    if is_src == 1 {
+		is_src = 0;
+		return;
+	    } else {
+		return;
+            };
           },
           _ => return,
       },
@@ -131,6 +130,7 @@ fn main() {
       _ => return,
     }
 
+if is_src == 1 {
     let mut target = display_src.draw();
     target.clear_color(1.0, 1.0, 1.0, 1.0);
 
@@ -163,11 +163,20 @@ fn main() {
       ).unwrap();
     }
     target.finish().unwrap();
-  });
-
-  let events_loop = event_loop::EventLoop::new();
+} else {
+  let wb = window::WindowBuilder::new()
+    .with_inner_size(dpi::LogicalSize::new(1024.0, 768.0))
+    .with_title("Image Morphing Tool");
+  let cb = ContextBuilder::new();
   let display_dst = glium::Display::new(wb, cb, &events_loop).unwrap();
   
+  let dst = {
+    let dst_img = image::open(&Path::new(&dst)).unwrap().to_rgba();
+    let dst_dim = dst_img.dimensions();
+    let dst_img = texture::RawImage2d::from_raw_rgba_reversed(&dst_img.into_raw(), dst_dim);
+    texture::SrgbTexture2d::new(&display_dst, dst_img).unwrap()
+  };
+
   let (vertices, indices) = {
     let data: Vec<u16> = vec![0, 1, 2, 1, 3, 2];
     let vertex_buf = glium::VertexBuffer::empty_dynamic(&display_dst, 4).unwrap();
@@ -181,27 +190,6 @@ fn main() {
     FRAGMENT_SHADER, 
     None
   ).unwrap();
-  
-  events_loop.run(move |event, _, control_flow| {
-    let next_frame_time = Instant::now() + Duration::from_nanos(16_666_667);
-    *control_flow = event_loop::ControlFlow::WaitUntil(next_frame_time);
-
-    match event {
-      event::Event::WindowEvent { event, .. } => match event {
-          event::WindowEvent::CloseRequested => {
-            *control_flow = event_loop::ControlFlow::Exit;
-            return;
-          },
-          _ => return,
-      },
-      event::Event::NewEvents(cause) => match cause {
-        event::StartCause::ResumeTimeReached { .. } => (),
-        event::StartCause::Init => (),
-        _ => return,
-      },
-      _ => return,
-    }
-
     let mut target = display_dst.draw();
     target.clear_color(1.0, 1.0, 1.0, 1.0);
 
@@ -234,5 +222,7 @@ fn main() {
       ).unwrap();
     }
     target.finish().unwrap();
-  });
+  }
+ });
+
 }
