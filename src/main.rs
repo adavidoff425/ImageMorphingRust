@@ -92,7 +92,7 @@ fn main() {
         Into::<[[f32; 4]; 4]>::into(matrix)
     };
 
-    let size = Vector2 { x: 500.0, y: 350.0 };
+    let size = Vector2 { x: 768.0, y: 576.0 };
     let mut position = Vector2 { x: 512.0, y: 384.0 };
     let mut is_src = 1;
 
