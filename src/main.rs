@@ -1,4 +1,5 @@
 #[macro_use]
+#[allow(unused_imports)]
 extern crate glium;
 extern crate cgmath;
 extern crate image;
@@ -7,7 +8,7 @@ extern crate winit;
 
 use cgmath::{Matrix4, Vector2};
 use glium::glutin::{dpi, event, event_loop, window, ContextBuilder};
-use glium::{index, texture, Surface};
+use glium::{index, texture, IndexBuffer, Surface, VertexBuffer};
 use std::fs::File;
 use std::io::Cursor;
 use std::path::Path;
@@ -16,7 +17,7 @@ use std::time::{Duration, Instant};
 
 #[derive(Copy, Clone)]
 struct Vertex {
-    position: [f32; 2],
+    position: [f64; 2],
 }
 
 implement_vertex!(Vertex, position);
@@ -77,10 +78,9 @@ fn main() {
 
     let (vertices, indices) = {
         let data: Vec<u16> = vec![0, 1, 2, 1, 3, 2];
-        let vertex_buf = glium::VertexBuffer::empty_dynamic(&display_src, 4).unwrap();
+        let vertex_buf = VertexBuffer::empty_dynamic(&display_src, 4).unwrap();
         let index_buf =
-            glium::IndexBuffer::new(&display_src, index::PrimitiveType::TrianglesList, &data)
-                .unwrap();
+            IndexBuffer::new(&display_src, index::PrimitiveType::TrianglesList, &data).unwrap();
         (vertex_buf, index_buf)
     };
 
@@ -94,11 +94,26 @@ fn main() {
 
     let size = Vector2 { x: 768.0, y: 576.0 };
     let mut position = Vector2 { x: 512.0, y: 384.0 };
+    let mut x_pos: f64 = 0.0;
+    let mut y_pos: f64 = 0.0;
     let mut is_src = 1;
+    let mut line_seg_pt = 0;
+    let mut src_lines: Vec<VertexBuffer<Vertex>> = Vec::new();
+    let mut dst_lines: Vec<VertexBuffer<Vertex>> = Vec::new();
+    let line_idx = index::NoIndices(index::PrimitiveType::LineStrip);
+    let line_params = glium::DrawParameters {
+        line_width: Some(2.0),
+        ..Default::default()
+    };
+    let mut new_line: Vec<Vertex> = Vec::new();
 
     events_loop.run(move |event, _, control_flow| {
         let next_frame_time = Instant::now() + Duration::from_nanos(16_666_667);
         *control_flow = event_loop::ControlFlow::WaitUntil(next_frame_time);
+        if line_seg_pt == 2 {
+          new_line.clear();
+          line_seg_pt = 0;
+        }
 
         match event {
             event::Event::WindowEvent { event, .. } => match event {
@@ -110,15 +125,45 @@ fn main() {
                         return;
                     };
                 }
+                // Tracks position of cursor
+                event::WindowEvent::CursorMoved {
+                    position: PhysicalPosition, ..
+                } => {
+                    x_pos = PhysicalPosition.x;
+                    y_pos = PhysicalPosition.y;
+                }
+                event::WindowEvent::MouseInput { state, button, .. } => match (state, button) {
+                    (Pressed, Left) => {
+                      new_line.push(Vertex {
+                        position: [x_pos, y_pos],
+                      });
+                      line_seg_pt = 1;
+                    },
+                    (Released, Left) => {
+                      new_line.push(Vertex {
+                        position: [x_pos, y_pos],
+                      });
+                      src_lines.push(VertexBuffer::immutable(&display_src, &new_line).unwrap());
+                        println!(
+                          "Start: ({}, {}), End: ({}, {})",
+                          new_line[0].position[0],
+                          new_line[0].position[1],
+                          new_line[1].position[0],
+                          new_line[1].position[1]
+                        );
+                      line_seg_pt = 2;
+                    },
+                    _ => return,
+                },
                 _ => return,
             },
-            event::Event::NewEvents(cause) => match cause {
-                event::StartCause::ResumeTimeReached { .. } => (),
-                event::StartCause::Init => (),
+                event::Event::NewEvents(cause) => match cause {
+                    event::StartCause::ResumeTimeReached { .. } => (),
+                    event::StartCause::Init => (),
+                    _ => return,
+                },
                 _ => return,
-            },
-            _ => return,
-        }
+            }
 
         if is_src == 1 {
             let mut target = display_src.draw();
@@ -200,13 +245,10 @@ fn main() {
 
                 let (vertices, indices) = {
                     let data: Vec<u16> = vec![0, 1, 2, 1, 3, 2];
-                    let vertex_buf = glium::VertexBuffer::empty_dynamic(&display_dst, 4).unwrap();
-                    let index_buf = glium::IndexBuffer::new(
-                        &display_dst,
-                        index::PrimitiveType::TrianglesList,
-                        &data,
-                    )
-                    .unwrap();
+                    let vertex_buf = VertexBuffer::empty_dynamic(&display_dst, 4).unwrap();
+                    let index_buf =
+                        IndexBuffer::new(&display_dst, index::PrimitiveType::TrianglesList, &data)
+                            .unwrap();
                     (vertex_buf, index_buf)
                 };
 
