@@ -99,7 +99,6 @@ fn main() {
     let mut is_src = 1;
     let mut line_seg_pt = 0;
     let mut src_lines: Vec<VertexBuffer<Vertex>> = Vec::new();
-    let mut dst_lines: Vec<VertexBuffer<Vertex>> = Vec::new();
     let line_idx = index::NoIndices(index::PrimitiveType::LineStrip);
     let line_params = glium::DrawParameters {
         line_width: Some(2.0),
@@ -111,8 +110,8 @@ fn main() {
         let next_frame_time = Instant::now() + Duration::from_nanos(16_666_667);
         *control_flow = event_loop::ControlFlow::WaitUntil(next_frame_time);
         if line_seg_pt == 2 {
-          new_line.clear();
-          line_seg_pt = 0;
+            new_line.clear();
+            line_seg_pt = 0;
         }
 
         match event {
@@ -127,43 +126,44 @@ fn main() {
                 }
                 // Tracks position of cursor
                 event::WindowEvent::CursorMoved {
-                    position: PhysicalPosition, ..
+                    position: PhysicalPosition,
+                    ..
                 } => {
                     x_pos = PhysicalPosition.x;
                     y_pos = PhysicalPosition.y;
                 }
                 event::WindowEvent::MouseInput { state, button, .. } => match (state, button) {
                     (Pressed, Left) => {
-                      new_line.push(Vertex {
-                        position: [x_pos, y_pos],
-                      });
-                      line_seg_pt = 1;
-                    },
-                    (Released, Left) => {
-                      new_line.push(Vertex {
-                        position: [x_pos, y_pos],
-                      });
-                      src_lines.push(VertexBuffer::immutable(&display_src, &new_line).unwrap());
-                        println!(
-                          "Start: ({}, {}), End: ({}, {})",
-                          new_line[0].position[0],
-                          new_line[0].position[1],
-                          new_line[1].position[0],
-                          new_line[1].position[1]
-                        );
-                      line_seg_pt = 2;
-                    },
+                        println!("mouse pressed at ({}, {})", x_pos, y_pos);
+                        new_line.push(Vertex {
+                            position: [x_pos, y_pos],
+                        });
+                        if line_seg_pt == 0 {
+                            line_seg_pt = 1;
+                        } else {
+                            src_lines
+                                .push(VertexBuffer::immutable(&display_src, &new_line).unwrap());
+                            println!(
+                                "Start: ({}, {}), End: ({}, {})",
+                                new_line[0].position[0],
+                                new_line[0].position[1],
+                                new_line[1].position[0],
+                                new_line[1].position[1]
+                            );
+                            line_seg_pt = 2;
+                        };
+                    }
                     _ => return,
                 },
                 _ => return,
             },
-                event::Event::NewEvents(cause) => match cause {
-                    event::StartCause::ResumeTimeReached { .. } => (),
-                    event::StartCause::Init => (),
-                    _ => return,
-                },
+            event::Event::NewEvents(cause) => match cause {
+                event::StartCause::ResumeTimeReached { .. } => (),
+                event::StartCause::Init => (),
                 _ => return,
-            }
+            },
+            _ => return,
+        }
 
         if is_src == 1 {
             let mut target = display_src.draw();
@@ -222,16 +222,56 @@ fn main() {
                     texture::RawImage2d::from_raw_rgba_reversed(&dst_img.into_raw(), dst_dim);
                 texture::SrgbTexture2d::new(&display_dst, dst_img).unwrap()
             };
+            let mut dst_lines: Vec<VertexBuffer<Vertex>> = Vec::new();
+            let mut new_line: Vec<Vertex> = Vec::new();
 
             events_loop_dst.run(move |event, _, control_flow| {
                 let next_frame_time = Instant::now() + Duration::from_nanos(16_666_667);
                 *control_flow = event_loop::ControlFlow::WaitUntil(next_frame_time);
+                if line_seg_pt == 2 {
+                  new_line.clear();
+                  line_seg_pt = 0;
+                }
 
                 match event {
                     event::Event::WindowEvent { event, .. } => match event {
                         event::WindowEvent::CloseRequested => {
                             *control_flow = event_loop::ControlFlow::Exit;
                             return;
+                        }
+                        event::WindowEvent::CursorMoved {
+                            position: PhysicalPosition,
+                            ..
+                        } => {
+                            x_pos = PhysicalPosition.x;
+                            y_pos = PhysicalPosition.y;
+                        }
+                        event::WindowEvent::MouseInput { state, button, .. } => {
+                            match (state, button) {
+                                (Pressed, Left) => {
+                                    println!("mouse pressed at ({}, {})", x_pos, y_pos);
+                                    new_line.push(Vertex {
+                                        position: [x_pos, y_pos],
+                                    });
+                                    if line_seg_pt == 0 {
+                                        line_seg_pt = 1;
+                                    } else {
+                                        dst_lines.push(
+                                            VertexBuffer::immutable(&display_dst, &new_line)
+                                                .unwrap(),
+                                        );
+                                        println!(
+                                            "Start: ({}, {}), End: ({}, {})",
+                                            new_line[0].position[0],
+                                            new_line[0].position[1],
+                                            new_line[1].position[0],
+                                            new_line[1].position[1]
+                                        );
+                                        line_seg_pt = 2;
+                                    };
+                                }
+                                _ => return,
+                            }
                         }
                         _ => return,
                     },
