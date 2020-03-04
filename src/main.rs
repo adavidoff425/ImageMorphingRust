@@ -9,11 +9,11 @@ extern crate winit;
 use cgmath::{Matrix4, Vector2};
 use glium::glutin::{dpi, event, event_loop, window, ContextBuilder};
 use glium::{index, texture, DrawParameters, IndexBuffer, Surface, VertexBuffer};
+use image::{DynamicImage, GenericImageView, ImageFormat};
 use std::fs::File;
 use std::io::Cursor;
 use std::path::Path;
 use std::time::{Duration, Instant};
-use image::{ImageFormat, DynamicImage, GenericImageView};
 
 #[derive(Copy, Clone)]
 struct Vertex {
@@ -76,16 +76,12 @@ fn main() {
         texture::SrgbTexture2d::new(&display_src, src_img).unwrap()
     };
 
-    let (vertices, indices, params) = {
+    let (vertices, indices) = {
         let data: Vec<u16> = vec![0, 1, 2, 1, 3, 2];
         let vertex_buf = VertexBuffer::empty_dynamic(&display_src, 4).unwrap();
         let index_buf =
             IndexBuffer::new(&display_src, index::PrimitiveType::TrianglesList, &data).unwrap();
-        let draw_params = DrawParameters {
-            line_width: Some(2.0),
-            ..Default::default()
-        };
-        (vertex_buf, index_buf, draw_params)
+        (vertex_buf, index_buf)
     };
 
     let program =
@@ -104,7 +100,7 @@ fn main() {
     let mut line_seg_pt = 0;
     let mut src_lines: Vec<VertexBuffer<Vertex>> = Vec::new();
     let line_idx = index::NoIndices(index::PrimitiveType::LineStrip);
-    let line_params = glium::DrawParameters {
+    let line_params = DrawParameters {
         line_width: Some(2.0),
         ..Default::default()
     };
@@ -138,15 +134,15 @@ fn main() {
                 }
                 event::WindowEvent::MouseInput { state, button, .. } => match (state, button) {
                     (Pressed, Left) => {
-                      //  println!("mouse pressed at ({}, {})", x_pos, y_pos);
                         new_line.push(Vertex {
                             position: [x_pos, y_pos],
                         });
                         if line_seg_pt == 0 {
                             line_seg_pt = 1;
                         } else {
-                            src_lines.push(VertexBuffer::immutable(&display_src, &new_line).unwrap());
-                       /*     println!(
+                            src_lines
+                                .push(VertexBuffer::immutable(&display_src, &new_line).unwrap());
+                            /*     println!(
                                 "Start: ({}, {}), End: ({}, {})",
                                 new_line[0].position[0],
                                 new_line[0].position[1],
@@ -191,11 +187,6 @@ fn main() {
                         position: [right, bottom],
                     },
                 ];
-                /*
-                for line in &src_lines[..] {
-                  vertex_buf.push(line[0]);
-                  vertex_buf.push(line[1]);
-                }*/
 
                 vertices.write(&vertex_buf);
             }
@@ -215,9 +206,10 @@ fn main() {
                         &Default::default(),
                     )
                     .unwrap();
+
                 for line in &src_lines[..] {
                     target
-                        .draw(line, &indices, &program, &uniforms, &params)
+                        .draw(line, &indices, &program, &uniforms, &line_params)
                         .unwrap();
                 }
             }
@@ -250,10 +242,16 @@ fn main() {
                 match event {
                     event::Event::WindowEvent { event, .. } => match event {
                         event::WindowEvent::CloseRequested => {
-			    let image: texture::RawImage2d<u8> = display_dst.read_front_buffer().unwrap();
-			    let image = image::ImageBuffer::from_raw(image.width, image.height, image.data.into_owned()).unwrap();
-			    let image = DynamicImage::ImageRgba8(image).flipv();
-			    image.save("trump-lines.png").unwrap();
+                            let image: texture::RawImage2d<u8> =
+                                display_dst.read_front_buffer().unwrap();
+                            let image = image::ImageBuffer::from_raw(
+                                image.width,
+                                image.height,
+                                image.data.into_owned(),
+                            )
+                            .unwrap();
+                            let image = DynamicImage::ImageRgba8(image).flipv();
+                            //    image.save("dst-lines.png").unwrap();
                             *control_flow = event_loop::ControlFlow::Exit;
                             return;
                         }
@@ -267,15 +265,18 @@ fn main() {
                         event::WindowEvent::MouseInput { state, button, .. } => {
                             match (state, button) {
                                 (Pressed, Left) => {
-                              //      println!("mouse pressed at ({}, {})", x_pos, y_pos);
+                                    //      println!("mouse pressed at ({}, {})", x_pos, y_pos);
                                     new_line.push(Vertex {
                                         position: [x_pos, y_pos],
                                     });
                                     if line_seg_pt == 0 {
                                         line_seg_pt = 1;
                                     } else {
-                                        dst_lines.push(VertexBuffer::immutable(&display_dst, &new_line).unwrap());
-                               /*         println!(
+                                        dst_lines.push(
+                                            VertexBuffer::immutable(&display_dst, &new_line)
+                                                .unwrap(),
+                                        );
+                                        /*         println!(
                                             "Start: ({}, {}), End: ({}, {})",
                                             new_line[0].position[0],
                                             new_line[0].position[1],
@@ -298,17 +299,17 @@ fn main() {
                     _ => return,
                 }
 
-                let (vertices, indices, params) = {
+                let (vertices, indices, line_params) = {
                     let data: Vec<u16> = vec![0, 1, 2, 1, 3, 2];
                     let vertex_buf = VertexBuffer::empty_dynamic(&display_dst, 4).unwrap();
                     let index_buf =
                         IndexBuffer::new(&display_dst, index::PrimitiveType::TrianglesList, &data)
                             .unwrap();
-                    let draw_params = DrawParameters {
+                    let line_params = DrawParameters {
                         line_width: Some(2.0),
                         ..Default::default()
                     };
-                    (vertex_buf, index_buf, draw_params)
+                    (vertex_buf, index_buf, line_params)
                 };
 
                 let program =
@@ -338,11 +339,6 @@ fn main() {
                         },
                     ];
 
-                    /*                    for line in &dst_lines[..] {
-                      vertex_buf.push(line[0]);
-                      vertex_buf.push(line[1]);
-                    }*/
-
                     vertices.write(&vertex_buf);
                 }
 
@@ -364,7 +360,7 @@ fn main() {
 
                     for line in &dst_lines[..] {
                         target
-                            .draw(line, &indices, &program, &uniforms, &params)
+                            .draw(line, &indices, &program, &uniforms, &line_params)
                             .unwrap();
                     }
                 }
