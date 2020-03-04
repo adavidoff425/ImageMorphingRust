@@ -98,7 +98,7 @@ fn main() {
     let mut y_pos: f64 = 0.0;
     let mut is_src = 1;
     let mut line_seg_pt = 0;
-    let mut src_lines: Vec<VertexBuffer<Vertex>> = Vec::new();
+    let mut src_lines: Vec<Vec<Vertex>> = Vec::new();
     let line_idx = index::NoIndices(index::PrimitiveType::LineStrip);
     let line_params = glium::DrawParameters {
         line_width: Some(2.0),
@@ -142,7 +142,7 @@ fn main() {
                             line_seg_pt = 1;
                         } else {
                             src_lines
-                                .push(VertexBuffer::immutable(&display_src, &new_line).unwrap());
+                                .push(new_line.clone());//VertexBuffer::immutable(&display_src, &new_line).unwrap());
                             println!(
                                 "Start: ({}, {}), End: ({}, {})",
                                 new_line[0].position[0],
@@ -174,7 +174,7 @@ fn main() {
                 let right = position.x + size.x / 2.0;
                 let bottom = position.y + size.y / 2.0;
                 let top = position.y - size.y / 2.0;
-                let vertex_buf = vec![
+                let mut vertex_buf = vec![
                     Vertex {
                         position: [left, top],
                     },
@@ -188,6 +188,12 @@ fn main() {
                         position: [right, bottom],
                     },
                 ];
+                
+                for line in &src_lines[..] {
+                  vertex_buf.push(line[0]);
+                  vertex_buf.push(line[1]);
+                }
+
                 vertices.write(&vertex_buf);
             }
 
@@ -222,7 +228,7 @@ fn main() {
                     texture::RawImage2d::from_raw_rgba_reversed(&dst_img.into_raw(), dst_dim);
                 texture::SrgbTexture2d::new(&display_dst, dst_img).unwrap()
             };
-            let mut dst_lines: Vec<VertexBuffer<Vertex>> = Vec::new();
+            let mut dst_lines: Vec<Vec<Vertex>> = Vec::new();
             let mut new_line: Vec<Vertex> = Vec::new();
 
             events_loop_dst.run(move |event, _, control_flow| {
@@ -256,10 +262,10 @@ fn main() {
                                     if line_seg_pt == 0 {
                                         line_seg_pt = 1;
                                     } else {
-                                        dst_lines.push(
-                                            VertexBuffer::immutable(&display_dst, &new_line)
-                                                .unwrap(),
-                                        );
+                                        dst_lines.push(new_line.clone());
+                                     //       VertexBuffer::immutable(&display_dst, &new_line)
+                                      //          .unwrap(),
+                                       // );
                                         println!(
                                             "Start: ({}, {}), End: ({}, {})",
                                             new_line[0].position[0],
@@ -304,7 +310,7 @@ fn main() {
                     let right = position.x + size.x / 2.0;
                     let bottom = position.y + size.y / 2.0;
                     let top = position.y - size.y / 2.0;
-                    let vertex_buf = vec![
+                    let mut vertex_buf = vec![
                         Vertex {
                             position: [left, top],
                         },
@@ -318,6 +324,12 @@ fn main() {
                             position: [right, bottom],
                         },
                     ];
+                    
+                    for line in &dst_lines[..] {
+                      vertex_buf.push(line[0]);
+                      vertex_buf.push(line[1]);
+                    }
+
                     vertices.write(&vertex_buf);
                 }
 
