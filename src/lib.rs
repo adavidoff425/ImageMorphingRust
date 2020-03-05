@@ -54,7 +54,7 @@ impl<'a, T: GenericImage> Morph<'a, T> {
     pub fn interpolate_lines(&self) -> Vec<Vec<Vertex>>
     {
       let mut inter_lines: Vec<Vec<Vertex>> = Vec::new();
-      for i in 0..self.src_lines.len() {
+      for i in 0..self.src_lines.len()-1 {
         let mut new_inter_line: Vec<Vertex> = Vec::new();
         new_inter_line.push(Vertex {
           position: [(1.0f64-self.t)*self.src_lines[i][0].position[0] + self.t*self.dst_lines[i][0].position[0], (1.0f64-self.t)*self.src_lines[i][0].position[1] + self.t*self.dst_lines[i][0].position[1]]
