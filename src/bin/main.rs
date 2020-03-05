@@ -265,6 +265,9 @@ fn main() {
                             //    image.save("dst-lines.png").unwrap();
                             let morph = Morph::new(
                               &image, &src_img, &src_lines_ref, &dst_lines_ref, 0.0, 0.0, 0.0, 0.0);
+                            for line in &src_lines_ref {
+                              println!("{}", line);
+                            }
                             morph.interpolate_lines();
                             *control_flow = event_loop::ControlFlow::Exit;
                             return;
