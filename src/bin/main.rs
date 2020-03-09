@@ -264,11 +264,11 @@ fn main() {
                             //let image = DynamicImage::ImageRgba8(image).flipv();
                             //    image.save("dst-lines.png").unwrap();
                             let morph = Morph::new(
-                              &image, &src_img, &src_lines_ref, &dst_lines_ref, 0.0, 0.0, 0.0, 0.0);
-                            for line in &src_lines_ref {
-                              println!("{}", line);
+                              &image, &src_img, &src_lines_ref, &dst_lines_ref, 0.5, 0.0, 0.0, 0.0);
+                            let inter_lines = morph.interpolate_lines();
+                            for line in &inter_lines {
+                              println!("({}, {}) -> ({}, {})", line[0].position[0], line[0].position[1], line[1].position[0], line[1].position[1]);
                             }
-                            morph.interpolate_lines();
                             *control_flow = event_loop::ControlFlow::Exit;
                             return;
                         }
