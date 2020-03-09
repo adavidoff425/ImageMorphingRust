@@ -7,7 +7,7 @@ extern crate image;
 extern crate imageproc;
 extern crate num_traits;
 
-use image::{GenericImage, GenericImageView, Pixel, Primitive};
+use image::{GenericImage, GenericImageView, ImageBuffer, Pixel, Primitive, RgbImage};
 use num_traits::NumCast;
 
 #[derive(Copy, Clone)]
@@ -54,31 +54,37 @@ impl<'a, T: GenericImageView> Morph<'a, T> {
         }
     }
 
-    pub fn interpolate_lines(&self) -> Vec<Vec<Vertex>>
-    {
-      let mut inter_lines: Vec<Vec<Vertex>> = Vec::new();
-      for i in 0..self.src_lines.len()-1 {
-        let mut new_inter_line: Vec<Vertex> = Vec::new();
-        new_inter_line.push(Vertex {
-          position: [(1.0f64-self.t)*self.src_lines[i][0].position[0] + self.t*self.dst_lines[i][0].position[0], (1.0f64-self.t)*self.src_lines[i][0].position[1] + self.t*self.dst_lines[i][0].position[1]]
-        });
-        new_inter_line.push(Vertex {
-          position: [(1.0f64-self.t)*self.src_lines[i][1].position[0] + self.t*self.dst_lines[i][1].position[0], (1.0f64-self.t)*self.src_lines[i][1].position[1] + self.t*self.dst_lines[i][1].position[1]]
-        });
-        inter_lines.push(new_inter_line);
+    pub fn interpolate_lines(&self) -> Vec<Vec<Vertex>> {
+        let mut inter_lines: Vec<Vec<Vertex>> = Vec::new();
+        for i in 0..self.src_lines.len() - 1 {
+            let mut new_inter_line: Vec<Vertex> = Vec::new();
+            new_inter_line.push(Vertex {
+                position: [
+                    (1.0f64 - self.t) * self.src_lines[i][0].position[0]
+                        + self.t * self.dst_lines[i][0].position[0],
+                    (1.0f64 - self.t) * self.src_lines[i][0].position[1]
+                        + self.t * self.dst_lines[i][0].position[1],
+                ],
+            });
+            new_inter_line.push(Vertex {
+                position: [
+                    (1.0f64 - self.t) * self.src_lines[i][1].position[0]
+                        + self.t * self.dst_lines[i][1].position[0],
+                    (1.0f64 - self.t) * self.src_lines[i][1].position[1]
+                        + self.t * self.dst_lines[i][1].position[1],
+                ],
+            });
+            inter_lines.push(new_inter_line);
         }
         inter_lines
     }
 
-    pub fn warp<I, J>(
-        self,
-        pt: Vec<f64>,
-        lines: Vec<Vec<Vertex>>,
+    pub fn warp(
+        &self,
+        pt: &Vec<f64>,
+        lines: &Vec<Vec<Vertex>>,
         src_lines: Vec<Vec<Vertex>>,
     ) -> (f64, f64)
-    where
-        I: GenericImage,
-        J: GenericImageView<Pixel = I::Pixel>,
     {
         let mut pd: Vec<f64> = Vec::new();
         let mut pq: Vec<f64> = Vec::new();
@@ -121,7 +127,7 @@ impl<'a, T: GenericImageView> Morph<'a, T> {
         (sum_x / weight_sum, sum_y / weight_sum)
     }
 
-    pub fn bilinear_interpolate<I, P, S>(&self, img: &I, x: f64, y: f64) -> P 
+    pub fn bilinear_interpolate<I, P, S>(&self, img: &I, x: f64, y: f64) -> P
     where
         I: GenericImageView<Pixel = P>,
         P: Pixel<Subpixel = S> + 'a,
@@ -139,15 +145,15 @@ impl<'a, T: GenericImageView> Morph<'a, T> {
         let rgb0 = alpha * beta * pix00.0[0].to_f64().unwrap()
             + (1.0f64 - alpha) * beta * pix01.0[0].to_f64().unwrap()
             + alpha * (1.0f64 - beta) * pix10.0[0].to_f64().unwrap()
-            + (1.0f64 - alpha) * (1.0f64 - beta) * pix11.0[0].to_f64().unwrap(); 
+            + (1.0f64 - alpha) * (1.0f64 - beta) * pix11.0[0].to_f64().unwrap();
         let rgb1 = alpha * beta * pix00.0[1].to_f64().unwrap()
             + (1.0f64 - alpha) * beta * pix01.0[1].to_f64().unwrap()
             + alpha * (1.0f64 - beta) * pix10.0[1].to_f64().unwrap()
-            + (1.0f64 - alpha) * (1.0f64 - beta) * pix11.0[1].to_f64().unwrap(); 
+            + (1.0f64 - alpha) * (1.0f64 - beta) * pix11.0[1].to_f64().unwrap();
         let rgb2 = alpha * beta * pix00.0[2].to_f64().unwrap()
             + (1.0f64 - alpha) * beta * pix01.0[2].to_f64().unwrap()
             + alpha * (1.0f64 - beta) * pix10.0[2].to_f64().unwrap()
-            + (1.0f64 - alpha) * (1.0f64 - beta) * pix11.0[2].to_f64().unwrap(); 
+            + (1.0f64 - alpha) * (1.0f64 - beta) * pix11.0[2].to_f64().unwrap();
         P::from_channels(
             NumCast::from(rgb0).unwrap(),
             NumCast::from(rgb1).unwrap(),
@@ -156,13 +162,9 @@ impl<'a, T: GenericImageView> Morph<'a, T> {
         )
     }
 
-    pub fn interpolate_color<I, P, S>(
-        &self,
-        src_pt: Vec<f64>,
-        dst_pt: Vec<f64>,
-    ) -> P
+    pub fn interpolate_color<P, S>(&self, src_pt: Vec<f64>, dst_pt: Vec<f64>) -> P
     where
-        I: GenericImageView<Pixel = P>,
+       // I: GenericImageView<Pixel = P>,
         P: Pixel<Subpixel = S> + 'static,
         S: Primitive + 'static,
     {
@@ -178,7 +180,7 @@ impl<'a, T: GenericImageView> Morph<'a, T> {
         let dst_r: f64 = NumCast::from(dst_color.0[0]).unwrap();
         let dst_g: f64 = NumCast::from(dst_color.0[1]).unwrap();
         let dst_b: f64 = NumCast::from(dst_color.0[2]).unwrap();
-        let rgb0 = src_r * (1.0f64 - self.t) + dst_r * self.t; 
+        let rgb0 = src_r * (1.0f64 - self.t) + dst_r * self.t;
         let rgb1 = src_g * (1.0f64 - self.t) + dst_g * self.t;
         let rgb2 = src_b * (1.0f64 - self.t) + dst_b * self.t;
         P::from_channels(
@@ -189,11 +191,57 @@ impl<'a, T: GenericImageView> Morph<'a, T> {
         )
     }
 
-    /* pub fn morph<I, J>(&self) -> J
+    pub fn morph<I, J>(&self) -> ()
     where
-       I: GenericImage,
-       J: GenericImageView<Pixel = I::Pixel>
+        I: GenericImage,
+        J: GenericImageView<Pixel = I::Pixel>,
     {
+        let (height, width) = self.src.dimensions();
+        let (dst_h, dst_w) = self.dst.dimensions();
+        let mut morphed_img: RgbImage = ImageBuffer::new(height, width);
+        let inter_lines = self.interpolate_lines();
 
-    }*/
+        for y in 0..height - 1 {
+            for x in 0..width - 1 {
+                let mut pt: Vec<f64> = Vec::new();
+                pt.push(x as f64);
+                pt.push(y as f64);
+                let (src_x, src_y) = self.warp(&pt, &inter_lines, self.src_lines.to_vec());
+                let (dst_x, dst_y) = self.warp(&pt, &inter_lines, self.dst_lines.to_vec());
+                let src_x = if src_x < 0.0 {
+                    0.0
+                } else if src_x > (width - 1).into() {
+                    (width - 1) as f64
+                } else {
+                    src_x
+                };
+                let src_y = if src_y < 0.0 {
+                    0.0
+                } else if src_y > (height - 1).into() {
+                    (height - 1) as f64
+                } else {
+                    src_y
+                };
+                let dst_x = if dst_x < 0.0 {
+                    0.0
+                } else if dst_x > (dst_w - 1).into() {
+                    (dst_w - 1) as f64
+                } else {
+                    dst_x
+                };
+                let dst_y = if dst_y < 0.0 {
+                    0.0
+                } else if dst_y > (dst_h - 1).into() {
+                    (dst_h - 1) as f64
+                } else {
+                    dst_y
+                };
+                let src_pt: Vec<f64> = vec![src_x, src_y];
+                let dst_pt: Vec<f64> = vec![dst_x, dst_y];
+
+                let color = self.interpolate_color(src_pt, dst_pt);
+                morphed_img.put_pixel(x, y, color);
+            }
+        }
+    }
 }

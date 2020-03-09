@@ -3,20 +3,19 @@
 extern crate glium;
 extern crate cgmath;
 extern crate image;
-extern crate imageproc;
 extern crate imagemorph;
+extern crate imageproc;
 extern crate winit;
 
-use imagemorph::*;
 use cgmath::{Matrix4, Vector2};
 use glium::glutin::{dpi, event, event_loop, window, ContextBuilder};
 use glium::{index, texture, DrawParameters, IndexBuffer, Surface, VertexBuffer};
 use image::{DynamicImage, GenericImageView, ImageFormat};
+use imagemorph::*;
 use std::fs::File;
 use std::io::Cursor;
 use std::path::Path;
 use std::time::{Duration, Instant};
-
 
 const VERTEX_SHADER: &'static str = r#"
     #version 140
@@ -73,7 +72,6 @@ fn main() {
         texture::SrgbTexture2d::new(&display_src, src_img).unwrap()
     };
 
-
     let (vertices, indices) = {
         let data: Vec<u16> = vec![0, 1, 2, 1, 3, 2];
         let vertex_buf = VertexBuffer::empty_dynamic(&display_src, 4).unwrap();
@@ -116,18 +114,17 @@ fn main() {
         match event {
             event::Event::WindowEvent { event, .. } => match event {
                 event::WindowEvent::CloseRequested => {
-                            let image: texture::RawImage2d<u8> =
-                                display_src.read_front_buffer().unwrap();
-                            src_img = image::ImageBuffer::from_raw(
-                                image.width,
-                                image.height,
-                                image.data.into_owned(),
-                            )
-                            .unwrap();
+                    let image: texture::RawImage2d<u8> = display_src.read_front_buffer().unwrap();
+                    src_img = image::ImageBuffer::from_raw(
+                        image.width,
+                        image.height,
+                        image.data.into_owned(),
+                    )
+                    .unwrap();
                     if is_src == 1 {
                         is_src = 0;
                     } else {
-//                        *control_flow = event_loop::ControlFlow::Exit;
+                        //                        *control_flow = event_loop::ControlFlow::Exit;
                         return;
                     };
                 }
@@ -264,10 +261,24 @@ fn main() {
                             //let image = DynamicImage::ImageRgba8(image).flipv();
                             //    image.save("dst-lines.png").unwrap();
                             let morph = Morph::new(
-                              &image, &src_img, &src_lines_ref, &dst_lines_ref, 0.5, 0.0, 0.0, 0.0);
+                                &image,
+                                &src_img,
+                                &src_lines_ref,
+                                &dst_lines_ref,
+                                0.5,
+                                0.0,
+                                0.0,
+                                0.0,
+                            );
                             let inter_lines = morph.interpolate_lines();
                             for line in &inter_lines {
-                              println!("({}, {}) -> ({}, {})", line[0].position[0], line[0].position[1], line[1].position[0], line[1].position[1]);
+                                println!(
+                                    "({}, {}) -> ({}, {})",
+                                    line[0].position[0],
+                                    line[0].position[1],
+                                    line[1].position[0],
+                                    line[1].position[1]
+                                );
                             }
                             *control_flow = event_loop::ControlFlow::Exit;
                             return;
