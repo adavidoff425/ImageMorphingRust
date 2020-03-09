@@ -104,7 +104,7 @@ fn main() {
     let mut new_line: Vec<Vertex> = Vec::new();
 
     events_loop.run(move |event, _, control_flow| {
-        let next_frame_time = Instant::now() + Duration::from_nanos(16_666_667);
+        let next_frame_time = Instant::now() + Duration::from_micros(1);
         *control_flow = event_loop::ControlFlow::WaitUntil(next_frame_time);
         if line_seg_pt == 2 {
             new_line.clear();
