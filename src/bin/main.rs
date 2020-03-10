@@ -10,10 +10,8 @@ extern crate winit;
 use cgmath::{Matrix4, Vector2};
 use glium::glutin::{dpi, event, event_loop, window, ContextBuilder};
 use glium::{index, texture, DrawParameters, IndexBuffer, Surface, VertexBuffer};
-use image::{DynamicImage, GenericImageView, ImageFormat};
+use image::{DynamicImage, RgbaImage};
 use imagemorph::*;
-use std::fs::File;
-use std::io::Cursor;
 use std::path::Path;
 use std::time::{Duration, Instant};
 
@@ -52,8 +50,8 @@ const FRAGMENT_SHADER: &'static str = r#"
 
 fn main() {
     //  assert_eq!(env::args().count(), 3);
-    let src = std::env::args().nth(1).unwrap();
-    let dst = std::env::args().nth(2).unwrap();
+    let src_path = std::env::args().nth(1).unwrap();
+    let dst_path = std::env::args().nth(2).unwrap();
 
     // Boilerplate code for initilizing glium display window
     // Adapted from tutorial at docs.rs/glium/0.26.0/glium
@@ -63,10 +61,10 @@ fn main() {
         .with_title("Image Morphing Tool");
     let cb = ContextBuilder::new();
     let display_src = glium::Display::new(wb, cb, &events_loop).unwrap();
-    let mut src_img = image::open(&Path::new(&src)).unwrap().to_rgba();
+    let mut src_img = image::open(&Path::new(&src_path)).unwrap().to_rgba();
 
     let src = {
-        let src_img = image::open(&Path::new(&src)).unwrap().to_rgba();
+        let src_img = image::open(&Path::new(&src_path)).unwrap().to_rgba();
         let src_dim = src_img.dimensions();
         let src_img = texture::RawImage2d::from_raw_rgba_reversed(&src_img.into_raw(), src_dim);
         texture::SrgbTexture2d::new(&display_src, src_img).unwrap()
@@ -88,8 +86,8 @@ fn main() {
         Into::<[[f32; 4]; 4]>::into(matrix)
     };
 
-    let size = Vector2 { x: 768.0, y: 576.0 };
-    let mut position = Vector2 { x: 512.0, y: 384.0 };
+    let size = Vector2 { x: 1024.0, y: 768.0 };
+    let position = Vector2 { x: 512.0, y: 384.0 };
     let mut x_pos: f64 = 0.0;
     let mut y_pos: f64 = 0.0;
     let mut is_src = 1;
@@ -115,12 +113,14 @@ fn main() {
             event::Event::WindowEvent { event, .. } => match event {
                 event::WindowEvent::CloseRequested => {
                     let image: texture::RawImage2d<u8> = display_src.read_front_buffer().unwrap();
-                    src_img = image::ImageBuffer::from_raw(
+                    let image = image::ImageBuffer::from_raw(
                         image.width,
                         image.height,
                         image.data.into_owned(),
                     )
                     .unwrap();
+                    let image = DynamicImage::ImageRgba8(image).flipv();
+                    image.save("src-lines.png").unwrap();
                     if is_src == 1 {
                         is_src = 0;
                     } else {
@@ -130,14 +130,14 @@ fn main() {
                 }
                 // Tracks position of cursor
                 event::WindowEvent::CursorMoved {
-                    position: PhysicalPosition,
+                    position: physical_position,
                     ..
                 } => {
-                    x_pos = PhysicalPosition.x;
-                    y_pos = PhysicalPosition.y;
+                    x_pos = physical_position.x;
+                    y_pos = physical_position.y;
+                    println!("({}, {})", x_pos, y_pos);
                 }
-                event::WindowEvent::MouseInput { state, button, .. } => match (state, button) {
-                    (Pressed, Left) => {
+                event::WindowEvent::MouseInput { .. } => {
                         new_line.push(Vertex {
                             position: [x_pos, y_pos],
                         });
@@ -156,8 +156,6 @@ fn main() {
                             );*/
                             line_seg_pt = 2;
                         };
-                    }
-                    _ => return,
                 },
                 _ => return,
             },
@@ -178,7 +176,7 @@ fn main() {
                 let right = position.x + size.x / 2.0;
                 let bottom = position.y + size.y / 2.0;
                 let top = position.y - size.y / 2.0;
-                let mut vertex_buf = vec![
+                let vertex_buf = vec![
                     Vertex {
                         position: [left, top],
                     },
@@ -214,7 +212,7 @@ fn main() {
 
                 for line in &src_lines[..] {
                     target
-                        .draw(line, &indices, &program, &uniforms, &line_params)
+                        .draw(line, &line_idx, &program, &uniform! {}, &line_params)
                         .unwrap();
                 }
             }
@@ -227,7 +225,7 @@ fn main() {
             let cb = ContextBuilder::new();
             let display_dst = glium::Display::new(wb, cb, &events_loop_dst).unwrap();
             let dst = {
-                let dst_img = image::open(&Path::new(&dst)).unwrap().to_rgba();
+                let dst_img = image::open(&Path::new(&dst_path)).unwrap().to_rgba();
                 let dst_dim = dst_img.dimensions();
                 let dst_img =
                     texture::RawImage2d::from_raw_rgba_reversed(&dst_img.into_raw(), dst_dim);
@@ -236,7 +234,8 @@ fn main() {
             let mut new_line: Vec<Vertex> = Vec::new();
             let mut dst_lines: Vec<VertexBuffer<Vertex>> = Vec::new();
             let mut dst_lines_ref: Vec<Vec<Vertex>> = Vec::new();
-            let src_img = src_img.clone();
+            let src_img = image::open(&Path::new(&src_path)).unwrap().to_rgba();
+            let dst_img = image::open(&Path::new(&dst_path)).unwrap().to_rgba();
             let src_lines_ref = src_lines_ref.clone();
 
             events_loop_dst.run(move |event, _, control_flow| {
@@ -252,71 +251,57 @@ fn main() {
                         event::WindowEvent::CloseRequested => {
                             let image: texture::RawImage2d<u8> =
                                 display_dst.read_front_buffer().unwrap();
-                            let mut image: image::RgbaImage = image::ImageBuffer::from_raw(
+                            let image: image::RgbaImage = image::ImageBuffer::from_raw(
                                 image.width,
                                 image.height,
                                 image.data.into_owned(),
                             )
                             .unwrap();
-                            //let image = DynamicImage::ImageRgba8(image).flipv();
-                            //    image.save("dst-lines.png").unwrap();
+                            let image = DynamicImage::ImageRgba8(image).flipv();
+                                image.save("dst-lines.png").unwrap();
                             let morph = Morph::new(
-                                &image,
+                                &dst_img,
                                 &src_img,
                                 &src_lines_ref,
                                 &dst_lines_ref,
                                 0.5,
-                                0.0,
-                                0.0,
-                                0.0,
+                                0.5,
+                                1.0,
+                                1.5,
                             );
-                            let inter_lines = morph.interpolate_lines();
-                            for line in &inter_lines {
-                                println!(
-                                    "({}, {}) -> ({}, {})",
-                                    line[0].position[0],
-                                    line[0].position[1],
-                                    line[1].position[0],
-                                    line[1].position[1]
-                                );
-                            }
+                            let morphed: RgbaImage = morph.morph();
+                            let image = image::DynamicImage::ImageRgba8(morphed);
+                            image.save("morphed.png").unwrap();
                             *control_flow = event_loop::ControlFlow::Exit;
                             return;
                         }
                         event::WindowEvent::CursorMoved {
-                            position: PhysicalPosition,
+                            position: physical_position,
                             ..
                         } => {
-                            x_pos = PhysicalPosition.x;
-                            y_pos = PhysicalPosition.y;
+                            x_pos = physical_position.x;
+                            y_pos = physical_position.y;
                         }
-                        event::WindowEvent::MouseInput { state, button, .. } => {
-                            match (state, button) {
-                                (Pressed, Left) => {
-                                    //      println!("mouse pressed at ({}, {})", x_pos, y_pos);
-                                    new_line.push(Vertex {
-                                        position: [x_pos, y_pos],
-                                    });
-                                    if line_seg_pt == 0 {
-                                        line_seg_pt = 1;
-                                    } else {
-                                        dst_lines.push(
-                                            VertexBuffer::immutable(&display_dst, &new_line)
-                                                .unwrap(),
-                                        );
-                                        dst_lines_ref.push(new_line.clone());
-                                        /*         println!(
-                                            "Start: ({}, {}), End: ({}, {})",
-                                            new_line[0].position[0],
-                                            new_line[0].position[1],
-                                            new_line[1].position[0],
-                                            new_line[1].position[1]
-                                        );*/
-                                        line_seg_pt = 2;
-                                    };
-                                }
-                                _ => return,
-                            }
+                        event::WindowEvent::MouseInput { .. } => {
+                            new_line.push(Vertex {
+                                position: [x_pos, y_pos],
+                            });
+                            if line_seg_pt == 0 {
+                                line_seg_pt = 1;
+                            } else {
+                                dst_lines.push(
+                                    VertexBuffer::immutable(&display_dst, &new_line).unwrap(),
+                                );
+                                dst_lines_ref.push(new_line.clone());
+                                /*         println!(
+                                    "Start: ({}, {}), End: ({}, {})",
+                                    new_line[0].position[0],
+                                    new_line[0].position[1],
+                                    new_line[1].position[0],
+                                    new_line[1].position[1]
+                                );*/
+                                line_seg_pt = 2;
+                            };
                         }
                         _ => return,
                     },
@@ -353,7 +338,7 @@ fn main() {
                     let right = position.x + size.x / 2.0;
                     let bottom = position.y + size.y / 2.0;
                     let top = position.y - size.y / 2.0;
-                    let mut vertex_buf = vec![
+                    let vertex_buf = vec![
                         Vertex {
                             position: [left, top],
                         },
@@ -389,7 +374,7 @@ fn main() {
 
                     for line in &dst_lines[..] {
                         target
-                            .draw(line, &indices, &program, &uniforms, &line_params)
+                            .draw(line, &line_idx, &program, &uniform! {}, &line_params)
                             .unwrap();
                     }
                 }
