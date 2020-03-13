@@ -15,6 +15,7 @@ use imagemorph::*;
 use std::path::Path;
 use std::time::{Duration, Instant};
 
+// C++ code needed to pass to OpenGL
 const VERTEX_SHADER: &'static str = r#"
     #version 140
 
@@ -36,6 +37,7 @@ const VERTEX_SHADER: &'static str = r#"
     }
 "#;
 
+// C++ code needed to pass to OpenGL
 const FRAGMENT_SHADER: &'static str = r#"
     #version 140
 
@@ -48,13 +50,25 @@ const FRAGMENT_SHADER: &'static str = r#"
     }
 "#;
 
+fn arg_error() -> ! {
+    eprintln!("Usage: cargo run image1 image2");
+    std::process::exit(1);
+}
+
+fn ft_line_err() -> ! {
+    eprintln!("Must be same number of feature lines on each image! Exiting to start over");
+    std::process::exit(1);
+}
+
 fn main() {
-    //  assert_eq!(env::args().count(), 3);
+    if std::env::args().count() != 3 {
+        arg_error();
+    }
     let src_path = std::env::args().nth(1).unwrap();
     let dst_path = std::env::args().nth(2).unwrap();
 
     // Boilerplate code for initilizing glium display window
-    // Adapted from tutorial at docs.rs/glium/0.26.0/glium
+    // Adapted for use from tutorial at docs.rs/glium/0.26.0/glium
     let events_loop = event_loop::EventLoop::new();
     let wb = window::WindowBuilder::new()
         .with_inner_size(dpi::LogicalSize::new(1024.0, 768.0))
@@ -86,7 +100,10 @@ fn main() {
         Into::<[[f32; 4]; 4]>::into(matrix)
     };
 
-    let size = Vector2 { x: 1024.0, y: 768.0 };
+    let size = Vector2 {
+        x: 1024.0,
+        y: 768.0,
+    };
     let position = Vector2 { x: 512.0, y: 384.0 };
     let mut x_pos: f64 = 0.0;
     let mut y_pos: f64 = 0.0;
@@ -137,25 +154,24 @@ fn main() {
                     y_pos = physical_position.y;
                 }
                 event::WindowEvent::MouseInput { .. } => {
-                        new_line.push(Vertex {
-                            position: [x_pos, y_pos],
-                        });
-                        if line_seg_pt == 0 {
-                            line_seg_pt = 1;
-                        } else {
-                            src_lines
-                                .push(VertexBuffer::immutable(&display_src, &new_line).unwrap());
-                            src_lines_ref.push(new_line.clone());
-                            /*     println!(
-                                "Start: ({}, {}), End: ({}, {})",
-                                new_line[0].position[0],
-                                new_line[0].position[1],
-                                new_line[1].position[0],
-                                new_line[1].position[1]
-                            );*/
-                            line_seg_pt = 2;
-                        };
-                },
+                    new_line.push(Vertex {
+                        position: [x_pos, y_pos],
+                    });
+                    if line_seg_pt == 0 {
+                        line_seg_pt = 1;
+                    } else {
+                        src_lines.push(VertexBuffer::immutable(&display_src, &new_line).unwrap());
+                        src_lines_ref.push(new_line.clone());
+                        println!(
+                            "Added new feature line: Start: ({}, {}), End: ({}, {})",
+                            new_line[0].position[0],
+                            new_line[0].position[1],
+                            new_line[1].position[0],
+                            new_line[1].position[1]
+                        );
+                        line_seg_pt = 2;
+                    };
+                }
                 _ => return,
             },
             event::Event::NewEvents(cause) => match cause {
@@ -209,8 +225,7 @@ fn main() {
                     )
                     .unwrap();
 
-                let image: texture::RawImage2d<u8> =
-                    display_src.read_front_buffer().unwrap();
+                let image: texture::RawImage2d<u8> = display_src.read_front_buffer().unwrap();
                 let image: image::RgbaImage = image::ImageBuffer::from_raw(
                     image.width,
                     image.height,
@@ -258,16 +273,9 @@ fn main() {
                 match event {
                     event::Event::WindowEvent { event, .. } => match event {
                         event::WindowEvent::CloseRequested => {
-                            let image: texture::RawImage2d<u8> =
-                                display_dst.read_front_buffer().unwrap();
-                            let image: image::RgbaImage = image::ImageBuffer::from_raw(
-                                image.width,
-                                image.height,
-                                image.data.into_owned(),
-                            )
-                            .unwrap();
-                            let image = DynamicImage::ImageRgba8(image).flipv();
-                                image.save("dst-lines.png").unwrap();
+                            if src_lines_ref.len() != dst_lines_ref.len() {
+                                ft_line_err();
+                            }
                             let morph = Morph::new(
                                 &src_img,
                                 &dst_img,
@@ -302,13 +310,13 @@ fn main() {
                                     VertexBuffer::immutable(&display_dst, &new_line).unwrap(),
                                 );
                                 dst_lines_ref.push(new_line.clone());
-                                /*         println!(
-                                    "Start: ({}, {}), End: ({}, {})",
+                                println!(
+                                    "Added new feature line: Start: ({}, {}), End: ({}, {})",
                                     new_line[0].position[0],
                                     new_line[0].position[1],
                                     new_line[1].position[0],
                                     new_line[1].position[1]
-                                );*/
+                                );
                                 line_seg_pt = 2;
                             };
                         }
@@ -340,7 +348,7 @@ fn main() {
                         .unwrap();
 
                 let mut target = display_dst.draw();
-                target.clear_color(1.0, 1.0, 1.0, 1.0);
+                target.clear_color(0.0, 0.0, 0.0, 1.0);
 
                 {
                     let left = position.x - size.x / 2.0;
@@ -381,8 +389,7 @@ fn main() {
                         )
                         .unwrap();
 
-                    let image: texture::RawImage2d<u8> =
-                        display_dst.read_front_buffer().unwrap();
+                    let image: texture::RawImage2d<u8> = display_dst.read_front_buffer().unwrap();
                     let image: image::RgbaImage = image::ImageBuffer::from_raw(
                         image.width,
                         image.height,

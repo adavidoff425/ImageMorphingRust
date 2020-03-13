@@ -16,8 +16,7 @@ pub struct Vertex {
 
 glium::implement_vertex!(Vertex, position);
 
-pub struct Morph<'a>
-{
+pub struct Morph<'a> {
     pub src: &'a RgbaImage,
     pub dst: &'a RgbaImage,
     pub src_lines: &'a Vec<Vec<Vertex>>,
@@ -119,30 +118,27 @@ impl<'a> Morph<'a> {
             sum_y += yy * weight;
             weight_sum += weight;
         }
-        (sum_x/weight_sum, sum_y/weight_sum)
+        (sum_x / weight_sum, sum_y / weight_sum)
     }
 
-    pub fn bilinear_interpolate(&self, img: &RgbaImage, x: f64, y: f64) -> (f64, f64, f64)
-    {
+    pub fn bilinear_interpolate(&self, img: &RgbaImage, x: f64, y: f64) -> (f64, f64, f64) {
         let (width, height) = img.dimensions();
-        let i: f64 = 
-          if x == 0.0 {
+        let i: f64 = if x == 0.0 {
             1.0
-          } else if x.ceil() == width as f64 {
-            (width-1) as f64
-          } else {
-            x.ceil() 
-          };
+        } else if x.ceil() == width as f64 {
+            (width - 1) as f64
+        } else {
+            x.ceil()
+        };
 
-        let j: f64 = 
-          if y == 0.0 {
+        let j: f64 = if y == 0.0 {
             1.0
-          } else if y.ceil() == height as f64 {
-            (height-1) as f64
-          } else {
-            y.ceil() 
-          };
-        
+        } else if y.ceil() == height as f64 {
+            (height - 1) as f64
+        } else {
+            y.ceil()
+        };
+
         let alpha = i - x;
         let beta = j - y;
         let pix00 = img.get_pixel(i as u32 - 1, j as u32 - 1).to_rgba();
@@ -162,7 +158,7 @@ impl<'a> Morph<'a> {
             + (1.0f64 - alpha) * beta * pix01.0[2] as f64
             + alpha * (1.0f64 - beta) * pix10.0[2] as f64
             + (1.0f64 - alpha) * (1.0f64 - beta) * pix11.0[2] as f64;
-      //  P::from_channels(
+        //  P::from_channels(
         (rgb0, rgb1, rgb2)
         /*    NumCast::from(rgb0).unwrap(),
             NumCast::from(rgb1).unwrap(),
@@ -171,15 +167,12 @@ impl<'a> Morph<'a> {
         )*/
     }
 
-    pub fn interpolate_color(&self, src_pt: Vec<f64>, dst_pt: Vec<f64>) -> (f64, f64, f64)
-    {
-        let (src_r, src_g, src_b) = self
-            .bilinear_interpolate(self.src, src_pt[0], src_pt[1]);
-           // .to_rgba();
-        let (dst_r, dst_g, dst_b) = self
-            .bilinear_interpolate(self.dst, dst_pt[0], dst_pt[1]);
-          /*  .to_rgba();*/
-        let rgb0 = src_r * (1.0f64 - self.t) + dst_r * self.t; 
+    pub fn interpolate_color(&self, src_pt: Vec<f64>, dst_pt: Vec<f64>) -> (f64, f64, f64) {
+        let (src_r, src_g, src_b) = self.bilinear_interpolate(self.src, src_pt[0], src_pt[1]);
+        // .to_rgba();
+        let (dst_r, dst_g, dst_b) = self.bilinear_interpolate(self.dst, dst_pt[0], dst_pt[1]);
+        /*  .to_rgba();*/
+        let rgb0 = src_r * (1.0f64 - self.t) + dst_r * self.t;
         let rgb1 = src_g * (1.0f64 - self.t) + dst_g * self.t;
         let rgb2 = src_b * (1.0f64 - self.t) + dst_b * self.t;
         (rgb0, rgb1, rgb2)
@@ -191,22 +184,19 @@ impl<'a> Morph<'a> {
         )*/
     }
 
-    pub fn morph(&self) -> RgbaImage
-    {
+    pub fn morph(&self) -> RgbaImage {
         let (src_h, src_w) = self.src.dimensions();
         let (dst_h, dst_w) = self.dst.dimensions();
-        let width = 
-          if src_w >= dst_w {
+        let width = if src_w >= dst_w {
             (src_w as f32 * (src_w as f32 / dst_w as f32)) as u32
-          } else {
+        } else {
             (dst_w as f32 * (dst_w as f32 / src_w as f32)) as u32
-          };
-        let height = 
-          if src_h >= dst_h {
+        };
+        let height = if src_h >= dst_h {
             (src_h as f32 * (src_h as f32 / dst_h as f32)) as u32
-          } else {
+        } else {
             (dst_h as f32 * (dst_h as f32 / src_h as f32)) as u32
-          };
+        };
 
         let morphed_img: RgbaImage = ImageBuffer::new(width, height);
         let mut src_map: RgbaImage = ImageBuffer::new(src_w, src_h);
@@ -216,9 +206,10 @@ impl<'a> Morph<'a> {
         println!("src_h: {}, src_w: {}", src_h, src_w);
         println!("dst_h: {}, dst_w: {}", dst_h, dst_w);
 
-        for y in 0..src_h-1 {
-            for x in 0..src_w-1 {
-                let (src_x, src_y) = self.warp(x as f64, y as f64, &inter_lines, self.src_lines.to_vec());
+        for y in 0..src_h - 1 {
+            for x in 0..src_w - 1 {
+                let (src_x, src_y) =
+                    self.warp(x as f64, y as f64, &inter_lines, self.src_lines.to_vec());
                 let src_x = if src_x < 0.0 {
                     0.0
                 } else if src_x > (src_w - 1).into() {
@@ -236,7 +227,7 @@ impl<'a> Morph<'a> {
                 let src_x = src_x as f32 * (src_w as f32 / 1024.0);
                 let src_y = src_y as f32 * (src_h as f32 / 768.0);
                 if src_x as u32 > src_w - 1 || src_y as u32 > src_h - 1 {
-                  continue;
+                    continue;
                 }
                 src_map.put_pixel(x, y, *self.src.get_pixel(src_x as u32, src_y as u32));
 
@@ -249,30 +240,31 @@ impl<'a> Morph<'a> {
             }
         }
 
-        for y in 0..dst_h-1 {
-          for x in 0..dst_w-1 {
-            let (dst_x, dst_y) = self.warp(x as f64, y as f64, &inter_lines, self.dst_lines.to_vec());
-            let dst_x = if dst_x < 0.0 {
-                0.0
-            } else if dst_x > (dst_w - 1).into() {
-                (dst_w - 1) as f64
-            } else {
-                dst_x
-            };
-            let dst_y = if dst_y < 0.0 {
-                0.0
-            } else if dst_y > (dst_h - 1).into() {
-                (dst_h - 1) as f64
-            } else {
-                dst_y
-            };
-            let dst_x = dst_x as f32 * (dst_w as f32 / 1024.0);
-            let dst_y = dst_y as f32 * (dst_h as f32 / 768.0);
-            if dst_x > (dst_w - 1) as f32 || dst_y > (dst_h - 1) as f32 {
-              continue;
+        for y in 0..dst_h - 1 {
+            for x in 0..dst_w - 1 {
+                let (dst_x, dst_y) =
+                    self.warp(x as f64, y as f64, &inter_lines, self.dst_lines.to_vec());
+                let dst_x = if dst_x < 0.0 {
+                    0.0
+                } else if dst_x > (dst_w - 1).into() {
+                    (dst_w - 1) as f64
+                } else {
+                    dst_x
+                };
+                let dst_y = if dst_y < 0.0 {
+                    0.0
+                } else if dst_y > (dst_h - 1).into() {
+                    (dst_h - 1) as f64
+                } else {
+                    dst_y
+                };
+                let dst_x = dst_x as f32 * (dst_w as f32 / 1024.0);
+                let dst_y = dst_y as f32 * (dst_h as f32 / 768.0);
+                if dst_x > (dst_w - 1) as f32 || dst_y > (dst_h - 1) as f32 {
+                    continue;
+                }
+                dst_map.put_pixel(x, y, *self.dst.get_pixel(dst_x as u32, dst_y as u32));
             }
-            dst_map.put_pixel(x, y, *self.dst.get_pixel(dst_x as u32, dst_y as u32));
-          }
         }
 
         src_map.save("src_warp.png").unwrap();
