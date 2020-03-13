@@ -135,7 +135,6 @@ fn main() {
                 } => {
                     x_pos = physical_position.x;
                     y_pos = physical_position.y;
-                    println!("({}, {})", x_pos, y_pos);
                 }
                 event::WindowEvent::MouseInput { .. } => {
                         new_line.push(Vertex {
@@ -169,7 +168,7 @@ fn main() {
 
         if is_src == 1 {
             let mut target = display_src.draw();
-            target.clear_color(1.0, 1.0, 1.0, 1.0);
+            target.clear_color(0.0, 0.0, 0.0, 1.0);
 
             {
                 let left = position.x - size.x / 2.0;
@@ -210,6 +209,16 @@ fn main() {
                     )
                     .unwrap();
 
+                let image: texture::RawImage2d<u8> =
+                    display_src.read_front_buffer().unwrap();
+                let image: image::RgbaImage = image::ImageBuffer::from_raw(
+                    image.width,
+                    image.height,
+                    image.data.into_owned(),
+                )
+                .unwrap();
+                src_img = image;
+
                 for line in &src_lines[..] {
                     target
                         .draw(line, &line_idx, &program, &uniform! {}, &line_params)
@@ -234,9 +243,9 @@ fn main() {
             let mut new_line: Vec<Vertex> = Vec::new();
             let mut dst_lines: Vec<VertexBuffer<Vertex>> = Vec::new();
             let mut dst_lines_ref: Vec<Vec<Vertex>> = Vec::new();
-            let src_img = image::open(&Path::new(&src_path)).unwrap().to_rgba();
-            let dst_img = image::open(&Path::new(&dst_path)).unwrap().to_rgba();
+            let mut dst_img = image::open(&Path::new(&dst_path)).unwrap().to_rgba();
             let src_lines_ref = src_lines_ref.clone();
+            let src_img = src_img.clone();
 
             events_loop_dst.run(move |event, _, control_flow| {
                 let next_frame_time = Instant::now() + Duration::from_nanos(16_666_667);
@@ -260,8 +269,8 @@ fn main() {
                             let image = DynamicImage::ImageRgba8(image).flipv();
                                 image.save("dst-lines.png").unwrap();
                             let morph = Morph::new(
-                                &dst_img,
                                 &src_img,
+                                &dst_img,
                                 &src_lines_ref,
                                 &dst_lines_ref,
                                 0.5,
@@ -270,7 +279,7 @@ fn main() {
                                 1.5,
                             );
                             let morphed: RgbaImage = morph.morph();
-                            let image = image::DynamicImage::ImageRgba8(morphed);
+                            let image = image::DynamicImage::ImageRgba8(morphed).flipv();
                             image.save("morphed.png").unwrap();
                             *control_flow = event_loop::ControlFlow::Exit;
                             return;
@@ -371,6 +380,16 @@ fn main() {
                             &Default::default(),
                         )
                         .unwrap();
+
+                    let image: texture::RawImage2d<u8> =
+                        display_dst.read_front_buffer().unwrap();
+                    let image: image::RgbaImage = image::ImageBuffer::from_raw(
+                        image.width,
+                        image.height,
+                        image.data.into_owned(),
+                    )
+                    .unwrap();
+                    dst_img = image;
 
                     for line in &dst_lines[..] {
                         target
