@@ -82,12 +82,11 @@ impl<'a> Morph<'a> {
         lines: &Vec<Vec<Vertex>>,
         src_lines: Vec<Vec<Vertex>>,
     ) -> (f64, f64) {
-        let mut pd: Vec<f64> = Vec::new();
-        let mut pq: Vec<f64> = Vec::new();
-        let mut qd: Vec<f64> = Vec::new();
-        let mut sum_x: f64 = 0.0;
-        let mut sum_y: f64 = 0.0;
-        let mut weight_sum: f64 = 0.0;
+        let mut pd: Vec<f64> = Vec::new(); // X - P vector
+        let mut pq: Vec<f64> = Vec::new(); // P - Q vector
+        let mut qd: Vec<f64> = Vec::new(); // Alternate P - Q vector used for distance calculation
+        let mut DSUM: f64 = 0.0; // Sum of distances (X - X')
+        let mut weight_sum: f64 = 0.0; // Sum of weights of all feature lines
 
         for i in 0..self.src_lines.len() {
             pd.push(x - lines[i][0].position[0]);
@@ -97,12 +96,14 @@ impl<'a> Morph<'a> {
             let inter_len = pq[0] * pq[0] + pq[1] * pq[1];
             let u = (pd[0] * pq[0] + pd[1] * pq[1]) / inter_len;
             let inter_len = inter_len.sqrt();
-            let v = (pd[0] * pq[1] - pd[1] * pq[0]) / inter_len;
+            let v = (pd[1] * pq[0] - pd[0] * pq[1]) / inter_len;
             pq[0] = src_lines[i][1].position[0] - src_lines[i][0].position[0];
             pq[1] = src_lines[i][1].position[1] - src_lines[i][0].position[1];
             let src_len = (pq[0] * pq[0] + pq[1] * pq[1]).sqrt();
-            let xx = src_lines[i][0].position[0] + u * pq[0] + v * pq[1] / src_len;
-            let yy = src_lines[i][0].position[1] + u * pq[1] - v * pq[0] / src_len;
+            let xx = src_lines[i][0].position[0] + u * pq[0] - v * pq[1] / src_len;
+            let yy = src_lines[i][0].position[1] + u * pq[1] + v * pq[0] / src_len;
+            let dx = x - xx;
+            let dy = y - yy;
             let dist = if u < 0.0 {
                 (pd[0] * pd[0] + pd[1] * pd[1]).sqrt()
             } else if u > 1.0 {
@@ -114,11 +115,10 @@ impl<'a> Morph<'a> {
             };
 
             let weight = (inter_len.powf(self.p) / (self.a + dist)).powf(self.b);
-            sum_x += xx * weight;
-            sum_y += yy * weight;
+            DSUM += dx * weight + dy * weight;
             weight_sum += weight;
         }
-        (sum_x / weight_sum, sum_y / weight_sum)
+        (x + DSUM / weight_sum, y + DSUM / weight_sum)
     }
 
     pub fn bilinear_interpolate(&self, img: &RgbaImage, x: f64, y: f64) -> (f64, f64, f64) {
