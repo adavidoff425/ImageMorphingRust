@@ -11,7 +11,7 @@ use image::{ImageBuffer, Pixel, RgbaImage};
 
 #[derive(Copy, Clone)]
 pub struct Vertex {
-   position: [f64; 2],
+   pub position: [f64; 2],
 }
 
 glium::implement_vertex!(Vertex, position);
@@ -77,7 +77,7 @@ impl<'a> Morph<'a> {
         x: f64,
         y: f64,
         lines: &[Vec<Vertex>],
-        src_lines: Vec<Vec<Vertex>>,
+        img_lines: Vec<Vec<Vertex>>,
     ) -> (f64, f64) {
         let mut pd: Vec<f64> = Vec::new(); // X - P vector
         let mut pq: Vec<f64> = Vec::new(); // P - Q vector
@@ -95,11 +95,11 @@ impl<'a> Morph<'a> {
             let u = (pd[0] * pq[0] + pd[1] * pq[1]) / inter_len;
             let inter_len = inter_len.sqrt();
             let v = (pd[0] * pq[1] - pd[1] * pq[0]) / inter_len;
-            pq[0] = src_lines[i][1].position[0] - src_lines[i][0].position[0];
-            pq[1] = src_lines[i][1].position[1] - src_lines[i][0].position[1];
+            pq[0] = img_lines[i][1].position[0] - img_lines[i][0].position[0];
+            pq[1] = img_lines[i][1].position[1] - img_lines[i][0].position[1];
             let src_len = (pq[0] * pq[0] + pq[1] * pq[1]).sqrt();
-            let xx = src_lines[i][0].position[0] + u * pq[0] + v * pq[1] / src_len;
-            let yy = src_lines[i][0].position[1] + u * pq[1] - v * pq[0] / src_len;
+            let xx = img_lines[i][0].position[0] + u * pq[0] + v * pq[1] / src_len;
+            let yy = img_lines[i][0].position[1] + u * pq[1] - v * pq[0] / src_len;
             let dx = x - xx;
             let dy = y - yy;
             let dist = if u < 0.0 {
@@ -178,7 +178,7 @@ impl<'a> Morph<'a> {
     pub fn morph(&self) -> RgbaImage {
         let (src_w, src_h) = self.src.dimensions();
         let (dst_w, dst_h) = self.dst.dimensions();
-        let width = if src_w >= dst_w {
+       /* let width = if src_w >= dst_w {
             (src_w as f32 * (src_w as f32 / dst_w as f32)) as u32
         } else {
             (dst_w as f32 * (dst_w as f32 / src_w as f32)) as u32
@@ -187,9 +187,10 @@ impl<'a> Morph<'a> {
             (src_h as f32 * (src_h as f32 / dst_h as f32)) as u32
         } else {
             (dst_h as f32 * (dst_h as f32 / src_h as f32)) as u32
-        };
+        };*/
+        println!("src: ({}, {}), dst: ({}, {})", src_w, src_h, dst_w, dst_h);
 
-        let mut morphed_img: RgbaImage = ImageBuffer::new(width, height);
+        let mut morphed_img: RgbaImage = ImageBuffer::new(dst_w, dst_h);
         let mut src_map: RgbaImage = ImageBuffer::new(src_w, src_h);
         let mut dst_map: RgbaImage = ImageBuffer::new(dst_w, dst_h);
         let inter_lines = self.interpolate_lines();
@@ -251,14 +252,12 @@ impl<'a> Morph<'a> {
         }
 
         let mut src_warp = image::DynamicImage::ImageRgba8(src_map).flipv();
-        src_warp.save("src_warp.png").unwrap();
-        src_warp = src_warp.flipv();
+        src_warp.flipv().save("src_warp.png").unwrap();
         let mut dst_warp = image::DynamicImage::ImageRgba8(dst_map).flipv();
-        dst_warp.save("dst_warp.png").unwrap();
-        dst_warp = dst_warp.flipv();
+        dst_warp.flipv().save("dst_warp.png").unwrap();
 
-        for y in 0..height - 1 {
-            for x in 0..width - 1 {
+        for y in 0..dst_h - 1 {
+            for x in 0..dst_w - 1 {
                 let (r, g, b) = self.interpolate_color(
                     vec![x as f64, y as f64],
                     vec![x as f64, y as f64],

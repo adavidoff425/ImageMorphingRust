@@ -10,7 +10,7 @@ extern crate winit;
 use cgmath::{Matrix4, Vector2};
 use glium::glutin::{dpi, event, event_loop, window, ContextBuilder};
 use glium::{index, texture, DrawParameters, IndexBuffer, Surface, VertexBuffer};
-use image::RgbaImage;
+use image::{ImageBuffer, RgbaImage};
 use imagemorph::*;
 use std::path::Path;
 use std::time::{Duration, Instant};
@@ -61,7 +61,61 @@ fn ft_line_err() -> ! {
 }
 
 fn main() {
-    if std::env::args().count() != 3 {
+    let src_line = vec![
+        Vertex {
+            position: [125f64, 100f64],
+        },
+        Vertex {
+            position: [375f64, 100f64],
+        },
+    ];
+    let src_line2 = vec![
+        Vertex {
+            position: [120f64, 40f64],
+        },
+        Vertex {
+            position: [480f64, 40f64],
+        },
+    ];
+
+    let dst_line = vec![
+        Vertex {
+            position: [225f64, 80f64],
+        },
+        Vertex {
+            position: [375f64, 80f64],
+        },
+    ];
+    let dst_line2 = vec![
+        Vertex {
+            position: [120f64, 30f64],
+        },
+        Vertex {
+            position: [580f64, 30f64],
+        },
+    ];
+    let src_lines = vec![src_line, src_line2];
+    let dst_lines = vec![dst_line, dst_line2];
+    let src_path = std::env::args().nth(1).unwrap();
+    let dst_path = std::env::args().nth(2).unwrap();
+    let src = image::open(&Path::new(&src_path)).unwrap();
+    let dst = image::open(&Path::new(&dst_path)).unwrap().to_rgba();
+    let (w, h) = dst.dimensions();
+    let src = src.resize_exact(w, h, image::imageops::FilterType::Nearest).to_rgba();
+    let morph = Morph::new(
+        &src, &dst, &src_lines, &dst_lines, (0.5f64, 1.0f64, 50.0f64, 1.0f64),
+    );/*
+    let inter_line_morph = morph.interpolate_lines();
+    let x: f64 = 50.0;
+    let y: f64 = 50.0;
+    let new_pt = morph.warp(x, y, &inter_line_morph, morph.src_lines.to_vec());
+    println!("({}, {})", new_pt.0, new_pt.1);
+    let new_pt = morph.warp(x, y, &inter_line_morph, morph.dst_lines.to_vec());
+    println!("({}, {})", new_pt.0, new_pt.1);*/
+    let morphed: RgbaImage = morph.morph();
+    let image = image::DynamicImage::ImageRgba8(morphed).flipv();
+    image.save("morphed.png").unwrap();
+   /* if std::env::args().count() != 3 {
         arg_error();
     }
     let src_path = std::env::args().nth(1).unwrap();
@@ -399,5 +453,5 @@ fn main() {
                 target.finish().unwrap();
             })
         }
-    });
+    });*/
 }
