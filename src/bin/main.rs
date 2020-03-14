@@ -63,35 +63,51 @@ fn ft_line_err() -> ! {
 fn main() {
     let src_line = vec![
         Vertex {
-            position: [125f64, 100f64],
+            position: [641f64, 210f64],
         },
         Vertex {
-            position: [375f64, 100f64],
+            position: [766f64, 214f64],
         },
     ];
     let src_line2 = vec![
         Vertex {
-            position: [120f64, 40f64],
+            position: [255f64, 201f64],
         },
         Vertex {
-            position: [480f64, 40f64],
+            position: [370f64, 216f64],
+        },
+    ];
+    let src_line3 = vec![
+        Vertex {
+            position: [394f64, 470f64],
+        },
+        Vertex {
+            position: [572f64, 471f64],
         },
     ];
 
     let dst_line = vec![
         Vertex {
-            position: [225f64, 80f64],
+            position: [639f64, 173f64],
         },
         Vertex {
-            position: [375f64, 80f64],
+            position: [811f64, 250f64],
         },
     ];
     let dst_line2 = vec![
         Vertex {
-            position: [120f64, 30f64],
+            position: [360f64, 131f64],
         },
         Vertex {
-            position: [580f64, 30f64],
+            position: [217f64, 266f64],
+        },
+    ];
+    let dst_line3 = vec![
+        Vertex {
+            position: [394f64, 438f64],
+        },
+        Vertex {
+            position: [791f64, 466f64],
         },
     ];
     let src_lines = vec![src_line, src_line2];
