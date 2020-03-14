@@ -85,7 +85,7 @@ impl<'a> Morph<'a> {
         let mut pd: Vec<f64> = Vec::new(); // X - P vector
         let mut pq: Vec<f64> = Vec::new(); // P - Q vector
         let mut qd: Vec<f64> = Vec::new(); // Alternate P - Q vector used for distance calculation
-        let mut DSUM: f64 = 0.0; // Sum of distances (X - X')
+        let mut dsum: f64 = 0.0; // Sum of distances (X - X')
         let mut weight_sum: f64 = 0.0; // Sum of weights of all feature lines
 
         for i in 0..self.src_lines.len() {
@@ -115,10 +115,10 @@ impl<'a> Morph<'a> {
             };
 
             let weight = (inter_len.powf(self.p) / (self.a + dist)).powf(self.b);
-            DSUM += dx * weight + dy * weight;
+            dsum += dx * weight + dy * weight;
             weight_sum += weight;
         }
-        (x + DSUM / weight_sum, y + DSUM / weight_sum)
+        (x + dsum / weight_sum, y + dsum / weight_sum)
     }
 
     pub fn bilinear_interpolate(&self, img: &RgbaImage, x: f64, y: f64) -> (f64, f64, f64) {
