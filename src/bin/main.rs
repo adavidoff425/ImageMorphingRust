@@ -10,13 +10,13 @@ extern crate winit;
 use cgmath::{Matrix4, Vector2};
 use glium::glutin::{dpi, event, event_loop, window, ContextBuilder};
 use glium::{index, texture, DrawParameters, IndexBuffer, Surface, VertexBuffer};
-use image::{DynamicImage, RgbaImage};
+use image::RgbaImage;
 use imagemorph::*;
 use std::path::Path;
 use std::time::{Duration, Instant};
 
 // C++ code needed to pass to OpenGL
-const VERTEX_SHADER: &'static str = r#"
+const VERTEX_SHADER: &str = r#"
     #version 140
 
     in vec2 position;
@@ -38,7 +38,7 @@ const VERTEX_SHADER: &'static str = r#"
 "#;
 
 // C++ code needed to pass to OpenGL
-const FRAGMENT_SHADER: &'static str = r#"
+const FRAGMENT_SHADER: &str = r#"
     #version 140
 
     in vec2 v_tex_coords;
@@ -129,19 +129,9 @@ fn main() {
         match event {
             event::Event::WindowEvent { event, .. } => match event {
                 event::WindowEvent::CloseRequested => {
-                    let image: texture::RawImage2d<u8> = display_src.read_front_buffer().unwrap();
-                    let image = image::ImageBuffer::from_raw(
-                        image.width,
-                        image.height,
-                        image.data.into_owned(),
-                    )
-                    .unwrap();
-                    let image = DynamicImage::ImageRgba8(image).flipv();
-                    image.save("src-lines.png").unwrap();
                     if is_src == 1 {
                         is_src = 0;
                     } else {
-                        //                        *control_flow = event_loop::ControlFlow::Exit;
                         return;
                     };
                 }
@@ -160,6 +150,17 @@ fn main() {
                     if line_seg_pt == 0 {
                         line_seg_pt = 1;
                     } else {
+                        if src_lines.is_empty() {
+                            let image: texture::RawImage2d<u8> =
+                                display_src.read_front_buffer().unwrap();
+                            let image: image::RgbaImage = image::ImageBuffer::from_raw(
+                                image.width,
+                                image.height,
+                                image.data.into_owned(),
+                            )
+                            .unwrap();
+                            src_img = image;
+                        }
                         src_lines.push(VertexBuffer::immutable(&display_src, &new_line).unwrap());
                         src_lines_ref.push(new_line.clone());
                         println!(
@@ -225,15 +226,6 @@ fn main() {
                     )
                     .unwrap();
 
-                let image: texture::RawImage2d<u8> = display_src.read_front_buffer().unwrap();
-                let image: image::RgbaImage = image::ImageBuffer::from_raw(
-                    image.width,
-                    image.height,
-                    image.data.into_owned(),
-                )
-                .unwrap();
-                src_img = image;
-
                 for line in &src_lines[..] {
                     target
                         .draw(line, &line_idx, &program, &uniform! {}, &line_params)
@@ -265,6 +257,7 @@ fn main() {
             events_loop_dst.run(move |event, _, control_flow| {
                 let next_frame_time = Instant::now() + Duration::from_nanos(16_666_667);
                 *control_flow = event_loop::ControlFlow::WaitUntil(next_frame_time);
+
                 if line_seg_pt == 2 {
                     new_line.clear();
                     line_seg_pt = 0;
@@ -281,10 +274,7 @@ fn main() {
                                 &dst_img,
                                 &src_lines_ref,
                                 &dst_lines_ref,
-                                0.5,
-                                0.5,
-                                1.0,
-                                1.5,
+                                (0.5, 1.0, 1.0, 1.0)
                             );
                             let morphed: RgbaImage = morph.morph();
                             let image = image::DynamicImage::ImageRgba8(morphed).flipv();
@@ -306,6 +296,17 @@ fn main() {
                             if line_seg_pt == 0 {
                                 line_seg_pt = 1;
                             } else {
+                                if dst_lines.is_empty() {
+                                    let image: texture::RawImage2d<u8> =
+                                        display_dst.read_front_buffer().unwrap();
+                                    let image: image::RgbaImage = image::ImageBuffer::from_raw(
+                                        image.width,
+                                        image.height,
+                                        image.data.into_owned(),
+                                    )
+                                    .unwrap();
+                                    dst_img = image;
+                                }
                                 dst_lines.push(
                                     VertexBuffer::immutable(&display_dst, &new_line).unwrap(),
                                 );
@@ -388,15 +389,6 @@ fn main() {
                             &Default::default(),
                         )
                         .unwrap();
-
-                    let image: texture::RawImage2d<u8> = display_dst.read_front_buffer().unwrap();
-                    let image: image::RgbaImage = image::ImageBuffer::from_raw(
-                        image.width,
-                        image.height,
-                        image.data.into_owned(),
-                    )
-                    .unwrap();
-                    dst_img = image;
 
                     for line in &dst_lines[..] {
                         target
