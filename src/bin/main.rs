@@ -61,7 +61,7 @@ fn ft_line_err() -> ! {
 }
 
 fn main() {
-    let src_line = vec![
+   /* let src_line = vec![
         Vertex {
             position: [541f64, 160f64],
         },
@@ -71,10 +71,10 @@ fn main() {
     ];
     let src_line2 = vec![
         Vertex {
-            position: [255f64, 201f64],
+            position: [370f64, 201f64],
         },
         Vertex {
-            position: [370f64, 216f64],
+            position: [255f64, 216f64],
         },
     ];
     let src_line3 = vec![
@@ -114,23 +114,23 @@ fn main() {
     let dst_lines = vec![dst_line, dst_line2, dst_line3];
     let src_path = std::env::args().nth(1).unwrap();
     let dst_path = std::env::args().nth(2).unwrap();
-    let src = image::open(&Path::new(&src_path)).unwrap();
-    let dst = image::open(&Path::new(&dst_path)).unwrap().to_rgba();
-    let (w, h) = dst.dimensions();
-    let src = src.resize_exact(w, h, image::imageops::FilterType::Nearest).to_rgba();
+    let src = image::open(&Path::new(&src_path)).unwrap().to_rgba();
+    let dst = image::open(&Path::new(&dst_path)).unwrap();
+    let (w, h) = src.dimensions();
+    let dst = dst.resize_exact(w, h, image::imageops::FilterType::Nearest).to_rgba();
     let morph = Morph::new(
-        &src, &dst, &src_lines, &dst_lines, (0.5f64, 0.5f64, 50.0f64, 1.5f64),
+        &src, &dst, &src_lines, &dst_lines, (0.5f64, 1.0f64, 5.0f64, 1.0f64),
     );
     let inter_line_morph = morph.interpolate_lines();
-    let x: f64 = 150.0;
-    let y: f64 = 250.0;
+    let x: f64 = 250.0;
+    let y: f64 = 400.0;
     let new_pt = morph.warp(x, y, &inter_line_morph, morph.src_lines.to_vec());
     println!("({}, {})", new_pt.0, new_pt.1);
     let new_pt = morph.warp(x, y, &inter_line_morph, morph.dst_lines.to_vec());
     println!("({}, {})", new_pt.0, new_pt.1);
-  /*  let morphed: RgbaImage = morph.morph();
+    let morphed: RgbaImage = morph.morph();
     let image = image::DynamicImage::ImageRgba8(morphed).flipv();
-    image.save("morphed.png").unwrap();
+    image.save("morphed.png").unwrap();*/
     if std::env::args().count() != 3 {
         arg_error();
     }
@@ -469,5 +469,5 @@ fn main() {
                 target.finish().unwrap();
             })
         }
-    });*/
+    });
 }

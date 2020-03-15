@@ -82,10 +82,9 @@ impl<'a> Morph<'a> {
         let mut pd: Vec<f64> = Vec::new(); // X - P vector
         let mut pq: Vec<f64> = Vec::new(); // P - Q vector
         let mut qd: Vec<f64> = Vec::new(); // X - Q vector used for distance calculation with u > 1
-        let mut dsum: f64 = 0.0; // Sum of distances (X - X')
-        //let mut dy_sum: f64 = 0.0; // Sum of distances (Y - Y')
+        let mut dx_sum: f64 = 0.0; // Sum of distances (X - X')
+        let mut dy_sum: f64 = 0.0; // Sum of distances (Y - Y')
         let mut weight_sum: f64 = 0.0; // Sum of weights of all feature lines
-        //println!("Point: ({}, {})", x, y);
         for i in 0..self.src_lines.len() {
             pd.clear();
             pq.clear();
@@ -95,21 +94,17 @@ impl<'a> Morph<'a> {
             pq.push(lines[i][1].position[0] - lines[i][0].position[0]);
             pq.push(lines[i][1].position[1] - lines[i][0].position[1]);
             let inter_len = pq[0] * pq[0] + pq[1] * pq[1];
-            let u = (pd[0] * pq[0] + pd[1] * pd[1]) / inter_len;
+            let u = (pd[0] * pq[0] + pd[1] * pq[1]) / inter_len;
             let inter_len = inter_len.sqrt();
-            let v = (pd[1] * pq[0] - pd[0] * pq[1]) / inter_len;
-            //println!("P: ({}, {}), Q: ({}, {})", lines[i][0].position[0], lines[i][0].position[1], lines[i][1].position[0], lines[i][1].position[1]);
+            let v = (pd[0] * pq[1] - pd[1] * pq[0]) / inter_len;
             pq[0] = img_lines[i][1].position[0] - img_lines[i][0].position[0];
             pq[1] = img_lines[i][1].position[1] - img_lines[i][0].position[1];
-            //println!("P': ({}, {}), Q': ({}, {})", img_lines[i][0].position[0], img_lines[i][0].position[1], img_lines[i][1].position[0], img_lines[i][1].position[1]);
 
             let src_len = (pq[0] * pq[0] + pq[1] * pq[1]).sqrt();
-            let xx = img_lines[i][0].position[0] + u * pq[0] - v * pq[1] / src_len;
-            let yy = img_lines[i][0].position[1] + u * pq[1] + v * pq[0] / src_len;
-            //println!("u: {}, v: {}, X': ({}, {})", u, v, xx, yy);
+            let xx = img_lines[i][0].position[0] + u * pq[0] + v * pq[1] / src_len;
+            let yy = img_lines[i][0].position[1] + u * pq[1] - v * pq[0] / src_len;
             let dx = x - xx;
             let dy = y - yy;
-            let di = (dx * dx + dy * dy).sqrt();
             let dist = if u < 0.0 {
                 (pd[0] * pd[0] + pd[1] * pd[1]).sqrt()
             } else if u > 1.0 {
@@ -119,13 +114,13 @@ impl<'a> Morph<'a> {
             } else {
                 v.abs()
             };
-            //println!("dist: {}", dist);
 
             let weight = (inter_len.powf(self.p) / (self.a + dist)).powf(self.b);
-            dsum += di * weight;
+            dx_sum += dx * weight;
+            dy_sum += dy * weight;
             weight_sum += weight;
         }
-        (x + dsum / weight_sum, y + dsum / weight_sum)
+        (x + dx_sum / weight_sum, y - dy_sum / weight_sum)
     }
 
     pub fn bilinear_interpolate(&self, img: &RgbaImage, x: f64, y: f64) -> (f64, f64, f64) {
@@ -186,18 +181,6 @@ impl<'a> Morph<'a> {
     pub fn morph(&self) -> RgbaImage {
         let (src_w, src_h) = self.src.dimensions();
         let (dst_w, dst_h) = self.dst.dimensions();
-       /* let width = if src_w >= dst_w {
-            (src_w as f32 * (src_w as f32 / dst_w as f32)) as u32
-        } else {
-            (dst_w as f32 * (dst_w as f32 / src_w as f32)) as u32
-        };
-        let height = if src_h >= dst_h {
-            (src_h as f32 * (src_h as f32 / dst_h as f32)) as u32
-        } else {
-            (dst_h as f32 * (dst_h as f32 / src_h as f32)) as u32
-        };*/
-        println!("src: ({}, {}), dst: ({}, {})", src_w, src_h, dst_w, dst_h);
-
         let mut morphed_img: RgbaImage = ImageBuffer::new(dst_w, dst_h);
         let mut src_map: RgbaImage = ImageBuffer::new(src_w, src_h);
         let mut dst_map: RgbaImage = ImageBuffer::new(dst_w, dst_h);
